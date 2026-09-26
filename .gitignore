@@ -1,0 +1,15 @@
+# Build output
+target/
+*.jar
+*.class
+
+# Newman reports (regenerate with: newman run postman-collection.json -r cli,htmlextra)
+newman/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# macOS
+.DS_Store

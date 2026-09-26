@@ -1,0 +1,131 @@
+{
+  "info": {
+    "name": "LMS - academic-service (Phase 1)",
+    "description": "CRUD tests for academic-service. Set the baseUrl variable to point at whichever service you're testing.\n\nRun the whole folder in order: Create stores the new id, and later requests reuse it.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8102" },
+    { "key": "resource", "value": "academic" },
+    { "key": "itemId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/actuator/health", "host": ["{{baseUrl}}"], "path": ["actuator", "health"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": { "type": "text/javascript", "exec": [
+          "pm.test('service is up', () => pm.response.to.have.status(200));",
+          "pm.test('status is UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+        ]}
+      }]
+    },
+    {
+      "name": "Which profile is active",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/{{resource}}/whoami", "host": ["{{baseUrl}}"], "path": ["api", "{{resource}}", "whoami"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": { "type": "text/javascript", "exec": [
+          "pm.test('returns 200', () => pm.response.to.have.status(200));",
+          "console.log('Active profile: ' + pm.response.text());"
+        ]}
+      }]
+    },
+    {
+      "name": "READ all",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/{{resource}}", "host": ["{{baseUrl}}"], "path": ["api", "{{resource}}"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": { "type": "text/javascript", "exec": [
+          "pm.test('returns 200', () => pm.response.to.have.status(200));",
+          "pm.test('returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+        ]}
+      }]
+    },
+    {
+      "name": "CREATE",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman test record\",\n  \"description\": \"Created by the Phase 1 collection\",\n  \"ownerId\": 42\n}" },
+        "url": { "raw": "{{baseUrl}}/api/{{resource}}", "host": ["{{baseUrl}}"], "path": ["api", "{{resource}}"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": { "type": "text/javascript", "exec": [
+          "pm.test('returns 201 Created', () => pm.response.to.have.status(201));",
+          "const body = pm.response.json();",
+          "pm.test('assigned an id', () => pm.expect(body.id).to.be.a('number'));",
+          "pm.collectionVariables.set('itemId', body.id);",
+          "pm.test('echoes what we sent', () => pm.expect(body.name).to.eql('Postman test record'));"
+        ]}
+      }]
+    },
+    {
+      "name": "READ one",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/{{resource}}/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["api", "{{resource}}", "{{itemId}}"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": { "type": "text/javascript", "exec": [
+          "pm.test('returns 200', () => pm.response.to.have.status(200));",
+          "pm.test('is the record we created', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('itemId'))));"
+        ]}
+      }]
+    },
+    {
+      "name": "UPDATE",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman test record (updated)\",\n  \"description\": \"Changed by PUT\",\n  \"ownerId\": 99\n}" },
+        "url": { "raw": "{{baseUrl}}/api/{{resource}}/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["api", "{{resource}}", "{{itemId}}"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": { "type": "text/javascript", "exec": [
+          "pm.test('returns 200', () => pm.response.to.have.status(200));",
+          "pm.test('change was persisted', () => pm.expect(pm.response.json().name).to.include('updated'));"
+        ]}
+      }]
+    },
+    {
+      "name": "DELETE",
+      "request": {
+        "method": "DELETE",
+        "url": { "raw": "{{baseUrl}}/api/{{resource}}/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["api", "{{resource}}", "{{itemId}}"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": { "type": "text/javascript", "exec": [
+          "pm.test('returns 204 No Content', () => pm.response.to.have.status(204));"
+        ]}
+      }]
+    },
+    {
+      "name": "READ one (deleted -> 404)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/{{resource}}/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["api", "{{resource}}", "{{itemId}}"] }
+      },
+      "event": [{
+        "listen": "test",
+        "script": { "type": "text/javascript", "exec": [
+          "pm.test('gone, returns 404', () => pm.response.to.have.status(404));"
+        ]}
+      }]
+    }
+  ]
+}

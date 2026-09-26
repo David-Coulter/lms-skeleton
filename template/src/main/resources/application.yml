@@ -1,0 +1,78 @@
+spring:
+  application:
+    name: __ARTIFACT__          # gateway routes lb://__ARTIFACT__ here
+  config:
+    # 'optional:' = still boots if config-service isn't running yet
+    import: optional:configserver:http://config-service:8888
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://postgres:5432/__DB__}
+    username: ${DB_USER:lms}
+    password: ${DB_PASSWORD:lms}
+  jpa:
+    open-in-view: false
+
+server:
+  port: ${SERVER_PORT:__PORT__}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://discovery-service:8761/eureka}
+    # off by default so the service runs alone; compose turns it on
+    enabled: ${EUREKA_ENABLED:false}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env
+
+---
+# ---------- DEV ----------
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    # data.sql must run AFTER Hibernate creates the schema, not before
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+
+lms:
+  environment-label: DEV - schema auto-created, SQL logging on, seed data loaded
+
+logging:
+  level:
+    edu.lms: DEBUG
+
+---
+# ---------- PROD ----------
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  sql:
+    init:
+      mode: never
+
+lms:
+  environment-label: PROD - schema validated only, SQL logging off, no seed data
+
+logging:
+  level:
+    root: WARN
+    edu.lms: INFO
