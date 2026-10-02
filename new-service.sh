@@ -11,13 +11,12 @@ set -euo pipefail
 # name              port  db             resource
 SERVICES="
 user-service        8101  userdb         users
-academic-service    8102  academicdb     academic
 schedule-service    8103  scheduledb     schedule
 enrollment-service  8104  enrollmentdb   enrollment
 learning-service    8105  learningdb     learning
 assessment-service  8106  assessmentdb   assessment
 payment-service     8107  paymentdb      payments
-analytics-service   8108  analyticsdb    analytics
+dashboard-service   8108  dashboarddb    dashboard
 "
 
 usage() {
@@ -59,9 +58,9 @@ find . -type f \( -name '*.java' -o -name '*.xml' -o -name '*.yml' -o -name 'Doc
       -e "s/__RESOURCE__/${RESOURCE}/g;"
 
 # Fail loudly rather than handing Docker a broken file.
-if grep -rq '__[A-Z]*__' . 2>/dev/null; then
+if grep -rq '__[A-Z]*__' . --exclude='.fuse_hidden*' 2>/dev/null; then
   echo "ERROR: placeholders left unreplaced:"
-  grep -rn '__[A-Z]*__' . || true
+  grep -rn '__[A-Z]*__' . --exclude='.fuse_hidden*' || true
   exit 1
 fi
 

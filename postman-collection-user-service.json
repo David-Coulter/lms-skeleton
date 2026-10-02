@@ -1,0 +1,438 @@
+{
+  "info": {
+    "name": "LMS - user-service (Phase 1)",
+    "description": "CRUD and directory tests for user-service (David Coulter).\n\nRun the whole collection in order: CREATE stores the new id in the profileId variable and later requests reuse it.\n\nAssumes the dev profile with seed data loaded.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8101"
+    },
+    {
+      "key": "profileId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/actuator/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "actuator",
+            "health"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('service is up', () => pm.response.to.have.status(200));",
+              "pm.test('status is UP', () => pm.expect(pm.response.json().status).to.eql('UP'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Config service reachable",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles/whoami",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles",
+            "whoami"
+          ]
+        },
+        "description": "Returns the environment-label. If it mentions config-service, the config server is genuinely being read."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "const label = pm.response.text();",
+              "console.log('Environment: ' + label);",
+              "pm.test('label served by config-service', () => pm.expect(label).to.include('config-service'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "READ all profiles",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('returns an array', () => pm.expect(body).to.be.an('array'));",
+              "pm.test('seed data loaded', () => pm.expect(body.length).to.be.at.least(6));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "READ directory (sorted)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/directory",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "directory"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "const roles = pm.response.json().map(p => p.role);",
+              "pm.test('sorted by role', () => pm.expect(roles).to.eql(roles.slice().sort()));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "READ teachers only",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/teachers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "teachers"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('only teachers', () => body.forEach(p => pm.expect(p.role).to.eql('teacher')));",
+              "pm.test('found the seeded teachers', () => pm.expect(body.length).to.be.at.least(2));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "READ one teacher by username",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/teachers/janderson",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "teachers",
+            "janderson"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "pm.test('is Dr Anderson', () => pm.expect(pm.response.json().username).to.eql('janderson'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "READ teacher that is a student -> 404",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/teachers/student1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "teachers",
+            "student1"
+          ]
+        },
+        "description": "student1 exists but is not a teacher, so this must 404 rather than return the profile."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "CREATE profile",
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles"
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"Santa Clara, CA\",\n  \"bio\": \"Created by the Phase 1 Postman collection.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"academicYear\": \"2026 - 2027\",\n  \"grade\": \"Junior\",\n  \"gradeNumber\": \"11\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Pacific Time (PT)\",\n    \"notifications\": \"Email only\"\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 201 Created', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('assigned an id', () => pm.expect(body.id).to.be.a('number'));",
+              "pm.collectionVariables.set('profileId', body.id);",
+              "pm.test('embedded guardian saved', () => pm.expect(body.guardian.name).to.eql('Linh Nguyen'));",
+              "pm.test('embedded preferences saved', () => pm.expect(body.preferences.timezone).to.eql('Pacific Time (PT)'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "READ one profile",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles",
+            "{{profileId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "pm.test('is the profile we created', () => pm.expect(pm.response.json().username).to.eql('tnguyen'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "UPDATE profile",
+      "request": {
+        "method": "PUT",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles",
+            "{{profileId}}"
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"San Jose, CA\",\n  \"bio\": \"Updated by PUT.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"academicYear\": \"2026 - 2027\",\n  \"grade\": \"Junior\",\n  \"gradeNumber\": \"11\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Mountain Time (MT)\",\n    \"notifications\": \"Email & Push\"\n  }\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('location changed', () => pm.expect(body.location).to.eql('San Jose, CA'));",
+              "pm.test('embedded preferences changed', () => pm.expect(body.preferences.timezone).to.eql('Mountain Time (MT)'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "READ profile with classes",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles",
+            "1"
+          ]
+        },
+        "description": "student1 has three seeded classes - proves the @OneToMany serializes without a Jackson loop."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('classes present', () => pm.expect(body.classes).to.be.an('array'));",
+              "pm.test('has three classes', () => pm.expect(body.classes.length).to.eql(3));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DELETE profile",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles",
+            "{{profileId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 204 No Content', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "READ deleted profile -> 404",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles",
+            "{{profileId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('gone, returns 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

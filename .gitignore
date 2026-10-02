@@ -13,3 +13,6 @@ newman/
 
 # macOS
 .DS_Store
+
+# Artifacts left by the mounted filesystem when files are rewritten in place
+.fuse_hidden*

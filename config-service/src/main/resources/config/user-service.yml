@@ -1,0 +1,5 @@
+# Shared by every profile of user-service.
+# Served at GET /user-service/{profile}
+lms:
+  service-owner: David Coulter
+  bounded-context: Users, profiles, teacher directory

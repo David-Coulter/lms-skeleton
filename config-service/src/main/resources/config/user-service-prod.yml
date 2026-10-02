@@ -1,0 +1,17 @@
+# PROD profile for user-service, served by the config service.
+lms:
+  environment-label: "PROD - served by config-service (schema validated only, SQL logging off, no seed data)"
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  sql:
+    init:
+      mode: never
+
+logging:
+  level:
+    root: WARN
+    edu.lms: INFO

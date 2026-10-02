@@ -1,0 +1,21 @@
+# DEV profile for user-service, served by the config service.
+#
+# The environment-label below is what GET /api/users/profiles/whoami returns.
+# If it says "DEV - served by config-service", the config server is genuinely
+# being read - that's the proof for the video.
+lms:
+  environment-label: "DEV - served by config-service (schema auto-created, SQL logging on, seed data loaded)"
+
+spring:
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  sql:
+    init:
+      mode: always
+
+logging:
+  level:
+    edu.lms: DEBUG
