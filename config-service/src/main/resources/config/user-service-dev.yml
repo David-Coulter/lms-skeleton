@@ -1,8 +1,5 @@
 # DEV profile for user-service, served by the config service.
-#
-# The environment-label below is what GET /api/users/profiles/whoami returns.
-# If it says "DEV - served by config-service", the config server is genuinely
-# being read - that's the proof for the video.
+
 lms:
   environment-label: "DEV - served by config-service (schema auto-created, SQL logging on, seed data loaded)"
 
