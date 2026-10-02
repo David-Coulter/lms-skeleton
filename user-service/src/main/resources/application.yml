@@ -1,0 +1,79 @@
+spring:
+  application:
+    name: user-service          # gateway routes lb://user-service here
+  config:
+    # Pulls user-service-<profile>.yml from the config service.
+    # 'optional:' so the service still boots if the config server is down;
+    # the local profile blocks below are the fallback.
+    import: optional:configserver:${CONFIG_URL:http://config-service:8888}
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://postgres:5432/userdb}
+    username: ${DB_USER:lms}
+    password: ${DB_PASSWORD:lms}
+  jpa:
+    open-in-view: false
+
+server:
+  port: ${SERVER_PORT:8101}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://discovery-service:8761/eureka}
+    enabled: ${EUREKA_ENABLED:false}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env
+
+---
+# ---------- DEV (fallback; config-service overrides these) ----------
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    # data.sql must run AFTER Hibernate creates the schema, not before
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+
+lms:
+  environment-label: DEV - local fallback (config-service not reachable)
+
+logging:
+  level:
+    edu.lms: DEBUG
+
+---
+# ---------- PROD (fallback; config-service overrides these) ----------
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  sql:
+    init:
+      mode: never
+
+lms:
+  environment-label: PROD - local fallback (config-service not reachable)
+
+logging:
+  level:
+    root: WARN
+    edu.lms: INFO
