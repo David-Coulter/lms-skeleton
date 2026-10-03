@@ -251,7 +251,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"Santa Clara, CA\",\n  \"bio\": \"Created by the Phase 1 Postman collection.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"academicYear\": \"2026 - 2027\",\n  \"grade\": \"Junior\",\n  \"gradeNumber\": \"11\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Pacific Time (PT)\",\n    \"notifications\": \"Email only\"\n  }\n}"
+          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"Santa Clara, CA\",\n  \"bio\": \"Created by the Phase 1 Postman collection.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"gradeLevel\": \"junior\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Pacific Time (PT)\",\n    \"notifications\": \"Email only\"\n  }\n}"
         }
       },
       "event": [
@@ -265,7 +265,8 @@
               "pm.test('assigned an id', () => pm.expect(body.id).to.be.a('number'));",
               "pm.collectionVariables.set('profileId', body.id);",
               "pm.test('embedded guardian saved', () => pm.expect(body.guardian.name).to.eql('Linh Nguyen'));",
-              "pm.test('embedded preferences saved', () => pm.expect(body.preferences.timezone).to.eql('Pacific Time (PT)'));"
+              "pm.test('embedded preferences saved', () => pm.expect(body.preferences.timezone).to.eql('Pacific Time (PT)'));",
+              "pm.test('gradeLevel saved', () => pm.expect(pm.response.json().gradeLevel).to.eql('junior'));"
             ]
           }
         }
@@ -325,7 +326,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"San Jose, CA\",\n  \"bio\": \"Updated by PUT.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"academicYear\": \"2026 - 2027\",\n  \"grade\": \"Junior\",\n  \"gradeNumber\": \"11\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Mountain Time (MT)\",\n    \"notifications\": \"Email & Push\"\n  }\n}"
+          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"San Jose, CA\",\n  \"bio\": \"Updated by PUT.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"gradeLevel\": \"junior\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Mountain Time (MT)\",\n    \"notifications\": \"Email & Push\"\n  }\n}"
         }
       },
       "event": [
@@ -337,7 +338,8 @@
               "pm.test('returns 200', () => pm.response.to.have.status(200));",
               "const body = pm.response.json();",
               "pm.test('location changed', () => pm.expect(body.location).to.eql('San Jose, CA'));",
-              "pm.test('embedded preferences changed', () => pm.expect(body.preferences.timezone).to.eql('Mountain Time (MT)'));"
+              "pm.test('embedded preferences changed', () => pm.expect(body.preferences.timezone).to.eql('Mountain Time (MT)'));",
+              "pm.test('gradeLevel saved', () => pm.expect(pm.response.json().gradeLevel).to.eql('junior'));"
             ]
           }
         }

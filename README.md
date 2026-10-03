@@ -145,7 +145,7 @@ To add your own service's config, drop `<your-service>-dev.yml` and
 ## Postman
 
 Each service has its own collection. `postman-collection-user-service.json` is
-the worked example — 13 requests, 29 assertions covering the full CRUD cycle,
+the worked example — 13 requests, 31 assertions covering the full CRUD cycle,
 the directory and teacher lookups, and 404s for a deleted record and a bad
 lookup.
 

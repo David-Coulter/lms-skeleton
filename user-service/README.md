@@ -122,7 +122,7 @@ Prod fails fast when the schema doesn't exist, which is the point of
 
     newman run ../postman-collection-user-service.json -r cli,htmlextra
 
-13 requests, 29 assertions: the full CRUD cycle, embedded objects round-trip,
+13 requests, 31 assertions: the full CRUD cycle, embedded objects round-trip,
 the child collection serializing, and 404 errors for both a deleted profile, and a
 username that isn't a teacher.
 
