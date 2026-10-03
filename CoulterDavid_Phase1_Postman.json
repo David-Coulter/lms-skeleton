@@ -1,35 +1,15 @@
 {
   "info": {
+    "_postman_id": "d825e26f-7827-4ae5-bed3-7912f86b2ca3",
     "name": "LMS - user-service (Phase 1)",
-    "description": "CRUD and directory tests for user-service (David Coulter).\n\nRun the whole collection in order: CREATE stores the new id in the profileId variable and later requests reuse it.\n\nAssumes the dev profile with seed data loaded.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "description": "CRUD and directory tests for user-service.\n\nRun the whole collection in order: CREATE stores the new id in the profileId variable and later requests reuse it.\n\nAssumes the dev profile with seed data loaded.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "57811057",
+    "_collection_link": "https://go.postman.co/collection/57811057-d825e26f-7827-4ae5-bed3-7912f86b2ca3?source=collection_link"
   },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8101"
-    },
-    {
-      "key": "profileId",
-      "value": ""
-    }
-  ],
   "item": [
     {
       "name": "Health check",
-      "request": {
-        "method": "GET",
-        "url": {
-          "raw": "{{baseUrl}}/actuator/health",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "actuator",
-            "health"
-          ]
-        }
-      },
       "event": [
         {
           "listen": "test",
@@ -41,12 +21,42 @@
             ]
           }
         }
-      ]
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/actuator/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "actuator",
+            "health"
+          ]
+        }
+      },
+      "response": []
     },
     {
       "name": "Config service reachable",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "const label = pm.response.text();",
+              "console.log('Environment: ' + label);",
+              "pm.test('label served by config-service', () => pm.expect(label).to.include('config-service'));"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "GET",
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/users/profiles/whoami",
           "host": [
@@ -61,37 +71,10 @@
         },
         "description": "Returns the environment-label. If it mentions config-service, the config server is genuinely being read."
       },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('returns 200', () => pm.response.to.have.status(200));",
-              "const label = pm.response.text();",
-              "console.log('Environment: ' + label);",
-              "pm.test('label served by config-service', () => pm.expect(label).to.include('config-service'));"
-            ]
-          }
-        }
-      ]
+      "response": []
     },
     {
       "name": "READ all profiles",
-      "request": {
-        "method": "GET",
-        "url": {
-          "raw": "{{baseUrl}}/api/users/profiles",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "users",
-            "profiles"
-          ]
-        }
-      },
       "event": [
         {
           "listen": "test",
@@ -105,24 +88,26 @@
             ]
           }
         }
-      ]
-    },
-    {
-      "name": "READ directory (sorted)",
+      ],
       "request": {
         "method": "GET",
+        "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/users/directory",
+          "raw": "{{baseUrl}}/api/users/profiles",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
             "api",
             "users",
-            "directory"
+            "profiles"
           ]
         }
       },
+      "response": []
+    },
+    {
+      "name": "READ directory (sorted)",
       "event": [
         {
           "listen": "test",
@@ -135,24 +120,26 @@
             ]
           }
         }
-      ]
-    },
-    {
-      "name": "READ teachers only",
+      ],
       "request": {
         "method": "GET",
+        "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/users/teachers",
+          "raw": "{{baseUrl}}/api/users/directory",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
             "api",
             "users",
-            "teachers"
+            "directory"
           ]
         }
       },
+      "response": []
+    },
+    {
+      "name": "READ teachers only",
       "event": [
         {
           "listen": "test",
@@ -166,12 +153,41 @@
             ]
           }
         }
-      ]
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/teachers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "teachers"
+          ]
+        }
+      },
+      "response": []
     },
     {
       "name": "READ one teacher by username",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "pm.test('is Dr Anderson', () => pm.expect(pm.response.json().username).to.eql('janderson'));"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "GET",
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/users/teachers/janderson",
           "host": [
@@ -185,23 +201,24 @@
           ]
         }
       },
+      "response": []
+    },
+    {
+      "name": "READ teacher that is a student -> 404",
       "event": [
         {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('returns 200', () => pm.response.to.have.status(200));",
-              "pm.test('is Dr Anderson', () => pm.expect(pm.response.json().username).to.eql('janderson'));"
+              "pm.test('returns 404', () => pm.response.to.have.status(404));"
             ]
           }
         }
-      ]
-    },
-    {
-      "name": "READ teacher that is a student -> 404",
+      ],
       "request": {
         "method": "GET",
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/users/teachers/student1",
           "host": [
@@ -216,44 +233,10 @@
         },
         "description": "student1 exists but is not a teacher, so this must 404 rather than return the profile."
       },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('returns 404', () => pm.response.to.have.status(404));"
-            ]
-          }
-        }
-      ]
+      "response": []
     },
     {
       "name": "CREATE profile",
-      "request": {
-        "method": "POST",
-        "url": {
-          "raw": "{{baseUrl}}/api/users/profiles",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "users",
-            "profiles"
-          ]
-        },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"Santa Clara, CA\",\n  \"bio\": \"Created by the Phase 1 Postman collection.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"gradeLevel\": \"junior\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Pacific Time (PT)\",\n    \"notifications\": \"Email only\"\n  }\n}"
-        }
-      },
       "event": [
         {
           "listen": "test",
@@ -270,25 +253,35 @@
             ]
           }
         }
-      ]
-    },
-    {
-      "name": "READ one profile",
+      ],
       "request": {
-        "method": "GET",
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"Santa Clara, CA\",\n  \"bio\": \"Created by the Phase 1 Postman collection.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"gradeLevel\": \"junior\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Pacific Time (PT)\",\n    \"notifications\": \"Email only\"\n  }\n}"
+        },
         "url": {
-          "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
+          "raw": "{{baseUrl}}/api/users/profiles",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
             "api",
             "users",
-            "profiles",
-            "{{profileId}}"
+            "profiles"
           ]
         }
       },
+      "response": []
+    },
+    {
+      "name": "READ one profile",
       "event": [
         {
           "listen": "test",
@@ -300,12 +293,10 @@
             ]
           }
         }
-      ]
-    },
-    {
-      "name": "UPDATE profile",
+      ],
       "request": {
-        "method": "PUT",
+        "method": "GET",
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
           "host": [
@@ -317,18 +308,12 @@
             "profiles",
             "{{profileId}}"
           ]
-        },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"San Jose, CA\",\n  \"bio\": \"Updated by PUT.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"gradeLevel\": \"junior\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Mountain Time (MT)\",\n    \"notifications\": \"Email & Push\"\n  }\n}"
         }
       },
+      "response": []
+    },
+    {
+      "name": "UPDATE profile",
       "event": [
         {
           "listen": "test",
@@ -343,12 +328,53 @@
             ]
           }
         }
-      ]
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"tnguyen\",\n  \"fullName\": \"Taylor Nguyen\",\n  \"title\": \"Ms\",\n  \"firstName\": \"Taylor\",\n  \"lastName\": \"Nguyen\",\n  \"gender\": \"female\",\n  \"role\": \"student\",\n  \"email\": \"tnguyen@learninghub.local\",\n  \"phone\": \"(408) 555-0199\",\n  \"location\": \"San Jose, CA\",\n  \"bio\": \"Updated by PUT.\",\n  \"dateOfBirth\": \"2010-05-04\",\n  \"school\": \"Fremont High School\",\n  \"gradeLevel\": \"junior\",\n  \"address\": \"Santa Clara, CA\",\n  \"guardian\": {\n    \"name\": \"Linh Nguyen\",\n    \"relation\": \"Parent/Guardian\",\n    \"email\": \"linh.nguyen@gmail.com\",\n    \"phone\": \"(408) 555-0200\"\n  },\n  \"preferences\": {\n    \"timezone\": \"Mountain Time (MT)\",\n    \"notifications\": \"Email & Push\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles",
+            "{{profileId}}"
+          ]
+        }
+      },
+      "response": []
     },
     {
       "name": "READ profile with classes",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('returns 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('classes present', () => pm.expect(body.classes).to.be.an('array'));",
+              "pm.test('has three classes', () => pm.expect(body.classes.length).to.eql(3));"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "GET",
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/users/profiles/1",
           "host": [
@@ -363,38 +389,10 @@
         },
         "description": "student1 has three seeded classes - proves the @OneToMany serializes without a Jackson loop."
       },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('returns 200', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "pm.test('classes present', () => pm.expect(body.classes).to.be.an('array'));",
-              "pm.test('has three classes', () => pm.expect(body.classes.length).to.eql(3));"
-            ]
-          }
-        }
-      ]
+      "response": []
     },
     {
       "name": "DELETE profile",
-      "request": {
-        "method": "DELETE",
-        "url": {
-          "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "users",
-            "profiles",
-            "{{profileId}}"
-          ]
-        }
-      },
       "event": [
         {
           "listen": "test",
@@ -405,12 +403,10 @@
             ]
           }
         }
-      ]
-    },
-    {
-      "name": "READ deleted profile -> 404",
+      ],
       "request": {
-        "method": "GET",
+        "method": "DELETE",
+        "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
           "host": [
@@ -424,6 +420,10 @@
           ]
         }
       },
+      "response": []
+    },
+    {
+      "name": "READ deleted profile -> 404",
       "event": [
         {
           "listen": "test",
@@ -434,7 +434,34 @@
             ]
           }
         }
-      ]
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/profiles/{{profileId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "profiles",
+            "{{profileId}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8101"
+    },
+    {
+      "key": "profileId",
+      "value": ""
     }
   ]
 }
