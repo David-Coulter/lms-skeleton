@@ -28,6 +28,10 @@
     {
       "key": "newProfileId",
       "value": ""
+    },
+    {
+      "key": "newUsername",
+      "value": ""
     }
   ],
   "item": [
@@ -534,7 +538,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"newstudent\",\n  \"email\": \"newstudent@learninghub.local\",\n  \"firstName\": \"New\",\n  \"lastName\": \"Student\",\n  \"password\": \"newpass123\",\n  \"gradeLevel\": \"junior\"\n}"
+              "raw": "{\n  \"username\": \"{{newUsername}}\",\n  \"email\": \"{{newUsername}}@learninghub.local\",\n  \"firstName\": \"New\",\n  \"lastName\": \"Student\",\n  \"password\": \"newpass123\",\n  \"gradeLevel\": \"junior\"\n}"
             },
             "url": {
               "raw": "{{gatewayUrl}}/api/users/register",
@@ -550,13 +554,28 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A fresh username every run, so the collection is re-runnable against",
+                  "// a stack that already has data in it. The duplicate-409 request below",
+                  "// deliberately reuses the same value.",
+                  "const u = 'demo' + Date.now().toString().slice(-8);",
+                  "pm.collectionVariables.set('newUsername', u);",
+                  "console.log('registering:', u);"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const b = pm.response.json();",
-                  "pm.test('profile row created', () => pm.expect(b.username).to.eql('newstudent'));",
+                  "const expected = pm.collectionVariables.get('newUsername');",
+                  "pm.test('profile row created', () => pm.expect(b.username).to.eql(expected));",
                   "pm.test('role forced to student', () => pm.expect(b.role).to.eql('student'));",
                   "if (b.id) pm.collectionVariables.set('newProfileId', b.id);"
                 ]
@@ -577,7 +596,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"newstudent\",\n  \"email\": \"newstudent@learninghub.local\",\n  \"firstName\": \"New\",\n  \"lastName\": \"Student\",\n  \"password\": \"newpass123\",\n  \"gradeLevel\": \"junior\"\n}"
+              "raw": "{\n  \"username\": \"{{newUsername}}\",\n  \"email\": \"{{newUsername}}@learninghub.local\",\n  \"firstName\": \"New\",\n  \"lastName\": \"Student\",\n  \"password\": \"newpass123\",\n  \"gradeLevel\": \"junior\"\n}"
             },
             "url": {
               "raw": "{{gatewayUrl}}/api/users/register",
@@ -627,7 +646,7 @@
                 },
                 {
                   "key": "username",
-                  "value": "newstudent"
+                  "value": "{{newUsername}}"
                 },
                 {
                   "key": "password",
