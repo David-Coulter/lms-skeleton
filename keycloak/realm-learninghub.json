@@ -1,0 +1,162 @@
+{
+  "realm": "learninghub",
+  "enabled": true,
+  "displayName": "LearningHub",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "accessTokenLifespan": 1800,
+  "ssoSessionIdleTimeout": 3600,
+  "ssoSessionMaxLifespan": 36000,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@learninghub.local",
+    "fromDisplayName": "LearningHub",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Runs the school: users, subjects, enrollment, payments"
+      },
+      {
+        "name": "teacher",
+        "description": "Teaches classes, authors and grades assessments"
+      },
+      {
+        "name": "student",
+        "description": "Enrols in classes, takes assessments, pays tuition"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "learninghub-spa",
+      "name": "LearningHub SPA",
+      "description": "Public client for the Svelte front end and Postman. Password grant enabled for demos.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/*",
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "post.logout.redirect.uris": "+"
+      }
+    },
+    {
+      "clientId": "user-service",
+      "name": "user-service admin client",
+      "description": "Confidential client. Its service account holds realm-management roles so user-service can create users and trigger password resets.",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "user-service-secret",
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "student1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "student1@learninghub.local",
+      "firstName": "Sam",
+      "lastName": "Student",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "student123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "student"
+      ]
+    },
+    {
+      "username": "gadams",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "gadams@learninghub.local",
+      "firstName": "Grace",
+      "lastName": "Adams",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "student123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "student"
+      ]
+    },
+    {
+      "username": "janderson",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "janderson@learninghub.local",
+      "firstName": "John",
+      "lastName": "Anderson",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "teacher123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "teacher"
+      ]
+    },
+    {
+      "username": "admin1",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin1@learninghub.local",
+      "firstName": "Alice",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "service-account-user-service",
+      "enabled": true,
+      "serviceAccountClientId": "user-service",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "view-realm",
+          "query-clients"
+        ]
+      }
+    }
+  ]
+}

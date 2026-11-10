@@ -1,0 +1,945 @@
+{
+  "info": {
+    "name": "LMS - user-service (Phase 2: Security)",
+    "description": "Phase 2 security demo for user-service (David Coulter).\n\n**Everything goes through the gateway on http://localhost:8080** - /auth/** reaches Keycloak, /api/users/** reaches user-service via Eureka.\n\nRun the folders in order. Folder 1 stores tokens in collection variables that folders 2-5 reuse.\n\nFolders:\n0. No token \u2192 401\n1. Authentication - password grant, three roles, bad password\n2. Authorization - same endpoints, different roles, 200 vs 403\n3. Registration - public sign-up, duplicate rejected, new account logs in\n4. Password reminder - reset email, and no account enumeration\n5. Bearer token across services - reuse, statelessness, tampering\n\nThe password-reminder email appears in MailHog at http://localhost:8025.\nEureka's dashboard is at http://localhost:8761.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "studentToken",
+      "value": ""
+    },
+    {
+      "key": "teacherToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "newUserToken",
+      "value": ""
+    },
+    {
+      "key": "newProfileId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 \u00b7 No token \u2192 401",
+      "item": [
+        {
+          "name": "GET /api/users/teachers (no Authorization header)",
+          "request": {
+            "method": "GET",
+            "description": "The baseline. Every endpoint except register, password-reminder and whoami requires a bearer token. This is the service refusing an anonymous caller.",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/teachers",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "teachers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "console.log('WWW-Authenticate:', pm.response.headers.get('WWW-Authenticate'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 \u00b7 Authentication",
+      "description": "Log in through the gateway. Keycloak issues a JWT; nothing downstream ever sees a password.",
+      "item": [
+        {
+          "name": "Login as student1",
+          "request": {
+            "method": "POST",
+            "description": "Password grant through the gateway at /auth. Keycloak returns a signed JWT. The console prints the username, realm roles and issuer from the token payload.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "learninghub-spa"
+                },
+                {
+                  "key": "username",
+                  "value": "student1"
+                },
+                {
+                  "key": "password",
+                  "value": "student123"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/auth/realms/learninghub/protocol/openid-connect/token",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "auth",
+                "realms",
+                "learninghub",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - Keycloak issued a token', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('got an access_token', () => pm.expect(b.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('studentToken', b.access_token);",
+                  "// decode the payload so the roles are visible in the console during the demo",
+                  "const payload = JSON.parse(atob(b.access_token.split('.')[1]));",
+                  "console.log('user:', payload.preferred_username, '| roles:', payload.realm_access.roles.join(', '));",
+                  "console.log('issuer:', payload.iss);",
+                  "pm.test('token carries realm roles', () => pm.expect(payload.realm_access.roles).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as janderson (teacher)",
+          "request": {
+            "method": "POST",
+            "description": "Same flow, a teacher account.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "learninghub-spa"
+                },
+                {
+                  "key": "username",
+                  "value": "janderson"
+                },
+                {
+                  "key": "password",
+                  "value": "teacher123"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/auth/realms/learninghub/protocol/openid-connect/token",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "auth",
+                "realms",
+                "learninghub",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - Keycloak issued a token', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('got an access_token', () => pm.expect(b.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('teacherToken', b.access_token);",
+                  "// decode the payload so the roles are visible in the console during the demo",
+                  "const payload = JSON.parse(atob(b.access_token.split('.')[1]));",
+                  "console.log('user:', payload.preferred_username, '| roles:', payload.realm_access.roles.join(', '));",
+                  "console.log('issuer:', payload.iss);",
+                  "pm.test('token carries realm roles', () => pm.expect(payload.realm_access.roles).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as admin1",
+          "request": {
+            "method": "POST",
+            "description": "Same flow, an admin account.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "learninghub-spa"
+                },
+                {
+                  "key": "username",
+                  "value": "admin1"
+                },
+                {
+                  "key": "password",
+                  "value": "admin123"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/auth/realms/learninghub/protocol/openid-connect/token",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "auth",
+                "realms",
+                "learninghub",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - Keycloak issued a token', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('got an access_token', () => pm.expect(b.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('adminToken', b.access_token);",
+                  "// decode the payload so the roles are visible in the console during the demo",
+                  "const payload = JSON.parse(atob(b.access_token.split('.')[1]));",
+                  "console.log('user:', payload.preferred_username, '| roles:', payload.realm_access.roles.join(', '));",
+                  "console.log('issuer:', payload.iss);",
+                  "pm.test('token carries realm roles', () => pm.expect(payload.realm_access.roles).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login with a wrong password \u2192 401",
+          "request": {
+            "method": "POST",
+            "description": "Keycloak rejects bad credentials. The service is never involved.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "learninghub-spa"
+                },
+                {
+                  "key": "username",
+                  "value": "student1"
+                },
+                {
+                  "key": "password",
+                  "value": "wrong-password"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/auth/realms/learninghub/protocol/openid-connect/token",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "auth",
+                "realms",
+                "learninghub",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 - credentials rejected', () => pm.response.to.have.status(401));",
+                  "pm.test('no token issued', () => pm.expect(pm.response.json().access_token).to.be.undefined);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 \u00b7 Authorization",
+      "description": "Same endpoints, three different tokens. The role in the token decides what comes back.",
+      "item": [
+        {
+          "name": "Student \u2192 /teachers \u2192 200",
+          "request": {
+            "method": "GET",
+            "description": "Any signed-in user may see who teaches. @PreAuthorize(\"isAuthenticated()\")",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/teachers",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "teachers"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - students may list teachers', () => pm.response.to.have.status(200));",
+                  "pm.test('only teachers come back', () => pm.response.json().forEach(p => pm.expect(p.role).to.eql('teacher')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Student \u2192 /directory \u2192 403",
+          "request": {
+            "method": "GET",
+            "description": "The directory is staff-only: students do not browse other students. The token is valid - this is authorization failing, not authentication. @PreAuthorize(\"hasAnyRole('TEACHER','ADMIN')\")",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/directory",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "directory"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden - valid token, wrong role', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Teacher \u2192 /directory \u2192 200",
+          "request": {
+            "method": "GET",
+            "description": "Same URL, same code, a teacher's token. Now it succeeds.",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/directory",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "directory"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - staff may read the directory', () => pm.response.to.have.status(200));",
+                  "pm.test('sorted by role', () => { const r = pm.response.json().map(p => p.role); pm.expect(r).to.eql(r.slice().sort()); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Teacher \u2192 /profiles \u2192 403",
+          "request": {
+            "method": "GET",
+            "description": "Profile administration is admin-only. A teacher is authenticated but not authorized.",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/profiles",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "profiles"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{teacherToken}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin \u2192 /profiles \u2192 200",
+          "request": {
+            "method": "GET",
+            "description": "The admin token opens the administration surface.",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/profiles",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "profiles"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - admin may administer profiles', () => pm.response.to.have.status(200));",
+                  "pm.test('seed data present', () => pm.expect(pm.response.json().length).to.be.at.least(6));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 \u00b7 User registration",
+      "description": "Self-service sign-up. Public endpoint - you cannot have a token before you have an account.",
+      "item": [
+        {
+          "name": "Register a new account (no token)",
+          "request": {
+            "method": "POST",
+            "description": "Creates the Keycloak account and the profile row in one call. The role is forced to 'student' server-side: the request body cannot ask for admin.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newstudent\",\n  \"email\": \"newstudent@learninghub.local\",\n  \"firstName\": \"New\",\n  \"lastName\": \"Student\",\n  \"password\": \"newpass123\",\n  \"gradeLevel\": \"junior\"\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/register",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "register"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('profile row created', () => pm.expect(b.username).to.eql('newstudent'));",
+                  "pm.test('role forced to student', () => pm.expect(b.role).to.eql('student'));",
+                  "if (b.id) pm.collectionVariables.set('newProfileId', b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register the same username again \u2192 409",
+          "request": {
+            "method": "POST",
+            "description": "Keycloak already has the account, so registration is refused.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newstudent\",\n  \"email\": \"newstudent@learninghub.local\",\n  \"firstName\": \"New\",\n  \"lastName\": \"Student\",\n  \"password\": \"newpass123\",\n  \"gradeLevel\": \"junior\"\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/register",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "register"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log in as the account we just created",
+          "request": {
+            "method": "POST",
+            "description": "Proof the registration actually reached Keycloak: the new account can authenticate.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "learninghub-spa"
+                },
+                {
+                  "key": "username",
+                  "value": "newstudent"
+                },
+                {
+                  "key": "password",
+                  "value": "newpass123"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/auth/realms/learninghub/protocol/openid-connect/token",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "auth",
+                "realms",
+                "learninghub",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 - Keycloak issued a token', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('got an access_token', () => pm.expect(b.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('newUserToken', b.access_token);",
+                  "// decode the payload so the roles are visible in the console during the demo",
+                  "const payload = JSON.parse(atob(b.access_token.split('.')[1]));",
+                  "console.log('user:', payload.preferred_username, '| roles:', payload.realm_access.roles.join(', '));",
+                  "console.log('issuer:', payload.iss);",
+                  "pm.test('token carries realm roles', () => pm.expect(payload.realm_access.roles).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "New account \u2192 /teachers \u2192 200",
+          "request": {
+            "method": "GET",
+            "description": "And its student role works downstream.",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/teachers",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "teachers"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{newUserToken}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "New account \u2192 /directory \u2192 403",
+          "request": {
+            "method": "GET",
+            "description": "Still a student, so still refused the staff directory.",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/directory",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "directory"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{newUserToken}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 \u00b7 Password reminder",
+      "description": "Triggers Keycloak's reset-password email. Check the MailHog inbox at http://localhost:8025.",
+      "item": [
+        {
+          "name": "Request a reminder for student1",
+          "request": {
+            "method": "POST",
+            "description": "Keycloak emails an 'update password' action link. The mail lands in MailHog at http://localhost:8025 - open it during the demo.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"student1\"\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/password-reminder",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "password-reminder"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));",
+                  "console.log('Now open http://localhost:8025 - the reset email should be there.');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request a reminder for an account that does not exist \u2192 still 202",
+          "request": {
+            "method": "POST",
+            "description": "Deliberately the SAME response as a real account. Returning 404 here would turn this endpoint into a username oracle - anyone could discover which accounts exist. No email is sent; the miss is logged server-side.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"no-such-person\"\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/password-reminder",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "password-reminder"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 - identical to the real case', () => pm.response.to.have.status(202));",
+                  "pm.test('response body gives nothing away', () => pm.expect(pm.response.text()).to.include('If that account exists'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 \u00b7 Bearer token across services",
+      "description": "One token, issued once, accepted everywhere. Nothing stores a session.",
+      "item": [
+        {
+          "name": "Same student token, call 1 of 2",
+          "request": {
+            "method": "GET",
+            "description": "The gateway forwards the Authorization header untouched; user-service verifies the signature against the realm's JWKS. The gateway never validates the token itself, so a service is still safe if something reaches it directly.",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/teachers",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "teachers"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Same student token, call 2 of 2",
+          "request": {
+            "method": "GET",
+            "description": "Same token, different endpoint, no re-authentication and no session on the server. That statelessness is what lets user-service run as several instances.",
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/profiles/whoami",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "profiles",
+                "whoami"
+              ]
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "console.log('environment:', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tampered token \u2192 401",
+          "request": {
+            "method": "GET",
+            "description": "Flip one character in the signature. The service rejects it without asking Keycloak anything - the signature alone is proof.",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}x"
+              }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/users/teachers",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "teachers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 - bad signature', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

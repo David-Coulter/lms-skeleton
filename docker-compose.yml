@@ -1,9 +1,16 @@
-# Local compose. Bring up only what you own:
+# LearningHub - local compose.
 #
-#   docker compose up --build user-service
+#   docker compose up --build                 the whole Phase 2 stack
+#   docker compose up --build user-service    just your service and its deps
 #
-# postgres and config-service start automatically as dependencies.
-# Services you haven't generated yet are listed but never built unless named.
+# Single entry point is the gateway on http://localhost:8080
+#   /auth/**       -> Keycloak  (login, tokens, password reset)
+#   /api/users/**  -> user-service, resolved through Eureka
+#
+# Other UIs:
+#   http://localhost:8761   Eureka dashboard
+#   http://localhost:8025   MailHog inbox (password-reset emails land here)
+#   http://localhost:8888   Config server
 
 services:
   postgres:
@@ -20,7 +27,10 @@ services:
       interval: 5s
       retries: 10
     ports:
-      - "5432:5432"
+      # 5433 on the host: 5432 is often already taken by a local Postgres or
+      # another project's container. Nothing in this stack uses the host port -
+      # services reach Postgres over the compose network as postgres:5432.
+      - "5433:5432"
     networks: [lh-internal]
 
   # Spring Cloud Config Server.
@@ -37,6 +47,91 @@ services:
     networks: [lh-internal]
     restart: unless-stopped
 
+
+  # Fake SMTP. Keycloak sends password-reset mail here; read it at :8025
+  # instead of wiring up a real mail provider. Mailpit rather than MailHog
+  # because MailHog publishes no arm64 image.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks: [lh-internal]
+    restart: unless-stopped
+
+  # Identity provider. Realm, roles, clients and test users are imported from
+  # keycloak/realm-learninghub.json on first start.
+  #
+  # KC_HOSTNAME is the gateway, so tokens carry an issuer the outside world can
+  # reach; KC_HTTP_RELATIVE_PATH matches the gateway's /auth route.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${DB_USER}
+      KC_DB_PASSWORD: ${DB_PASSWORD}
+      KC_HTTP_RELATIVE_PATH: /auth
+      # Must include the relative path: Keycloak 26 uses KC_HOSTNAME as the
+      # complete frontend base URL and does NOT append KC_HTTP_RELATIVE_PATH
+      # to it when building the token's iss claim.
+      KC_HOSTNAME: http://localhost:8080/auth
+      KC_HOSTNAME_STRICT: "false"
+      # Lets Keycloak accept backchannel requests on whatever hostname
+      # they arrive on. user-service calls the Admin API internally at
+      # keycloak:8080 while tokens carry the public issuer localhost:8080;
+      # without this, Keycloak sees the mismatch and returns 403.
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm-learninghub.json:/opt/keycloak/data/import/realm-learninghub.json:ro
+    # No host port: Keycloak is reached through the gateway, which is what
+    # Phase 2 requires. The admin console is at
+    #     http://localhost:8080/auth/admin   (admin / admin)
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    networks: [lh-internal]
+    restart: unless-stopped
+
+  # Netflix Eureka. Services register here; the gateway resolves lb:// through it.
+  discovery-service:
+    build: ./discovery-service
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep -q UP"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 40s
+    networks: [lh-internal]
+    restart: unless-stopped
+
+  # Single origin for everything. The only port the outside world needs.
+  gateway-service:
+    build: ./gateway-service
+    environment:
+      EUREKA_URL: http://discovery-service:8761/eureka
+    ports:
+      - "8080:8080"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+      keycloak:
+        # service_started, not service_healthy: the Keycloak image has no
+        # usable in-container health probe. Spring fetches the JWKS lazily on
+        # the first token it validates, so starting early is harmless.
+        condition: service_started
+    networks: [lh-internal]
+    restart: unless-stopped
   user-service:
     build: ./user-service
     environment:
@@ -46,20 +141,41 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       SERVER_PORT: 8101
       CONFIG_URL: http://config-service:8888
-      EUREKA_ENABLED: "false"
+      EUREKA_ENABLED: "true"
       EUREKA_URL: http://discovery-service:8761/eureka
-    ports:
-      - "8101:8101"
+      # Token issuer is the gateway; signing keys are fetched internally.
+      KEYCLOAK_ISSUER_URI: http://localhost:8080/auth/realms/learninghub
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/auth/realms/learninghub/protocol/openid-connect/certs
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080/auth
+      KEYCLOAK_REALM: learninghub
+      KEYCLOAK_CLIENT_ID: user-service
+      KEYCLOAK_CLIENT_SECRET: user-service-secret
+    # No host port on purpose: everything reaches this service through the
+    # gateway, which is what Phase 2 requires, and it lets the service scale
+    # with `docker compose up -d --scale user-service=3` (a fixed host port
+    # can only be claimed by one container).
+    expose:
+      - "8101"
     depends_on:
       postgres:
         condition: service_healthy
       config-service:
+        condition: service_healthy
+      keycloak:
+        # service_started, not service_healthy: the Keycloak image has no
+        # usable in-container health probe. Spring fetches the JWKS lazily on
+        # the first token it validates, so starting early is harmless.
+        condition: service_started
+      discovery-service:
         condition: service_healthy
     networks: [lh-internal]
     restart: unless-stopped
 
 
   schedule-service:
+    # Placeholder: no folder in this repo yet (another teammate owns it).
+    # Behind a profile so `docker compose up` doesn't try to build it.
+    profiles: ["future"]
     build: ./schedule-service
     environment:
       SPRING_PROFILES_ACTIVE: ${PROFILE}
@@ -81,6 +197,9 @@ services:
     restart: unless-stopped
 
   enrollment-service:
+    # Placeholder: no folder in this repo yet (another teammate owns it).
+    # Behind a profile so `docker compose up` doesn't try to build it.
+    profiles: ["future"]
     build: ./enrollment-service
     environment:
       SPRING_PROFILES_ACTIVE: ${PROFILE}
@@ -102,6 +221,9 @@ services:
     restart: unless-stopped
 
   learning-service:
+    # Placeholder: no folder in this repo yet (another teammate owns it).
+    # Behind a profile so `docker compose up` doesn't try to build it.
+    profiles: ["future"]
     build: ./learning-service
     environment:
       SPRING_PROFILES_ACTIVE: ${PROFILE}
@@ -123,6 +245,9 @@ services:
     restart: unless-stopped
 
   assessment-service:
+    # Placeholder: no folder in this repo yet (another teammate owns it).
+    # Behind a profile so `docker compose up` doesn't try to build it.
+    profiles: ["future"]
     build: ./assessment-service
     environment:
       SPRING_PROFILES_ACTIVE: ${PROFILE}
@@ -144,6 +269,9 @@ services:
     restart: unless-stopped
 
   payment-service:
+    # Placeholder: no folder in this repo yet (another teammate owns it).
+    # Behind a profile so `docker compose up` doesn't try to build it.
+    profiles: ["future"]
     build: ./payment-service
     environment:
       SPRING_PROFILES_ACTIVE: ${PROFILE}
@@ -166,6 +294,9 @@ services:
 
 
   dashboard-service:
+    # Placeholder: no folder in this repo yet (another teammate owns it).
+    # Behind a profile so `docker compose up` doesn't try to build it.
+    profiles: ["future"]
     build: ./dashboard-service
     environment:
       SPRING_PROFILES_ACTIVE: ${PROFILE}
@@ -185,6 +316,19 @@ services:
         condition: service_healthy
     networks: [lh-internal]
     restart: unless-stopped
+
+  # Load test. Only runs when asked for:
+  #     docker compose --profile load run --rm gatling
+  # Report lands in gatling/target/gatling/.
+  gatling:
+    build: ./gatling
+    profiles: ["load"]
+    volumes:
+      - ./gatling/target:/gatling/target
+    networks: [lh-internal]
+    depends_on:
+      - gateway-service
+
 
 networks:
   lh-internal:

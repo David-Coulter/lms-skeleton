@@ -12,6 +12,15 @@ spring:
     password: ${DB_PASSWORD:lms}
   jpa:
     open-in-view: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Tokens are issued through the gateway, so the iss claim is the
+          # gateway's address. Keys are fetched over the internal network -
+          # nothing outside the compose network needs to reach Keycloak.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/auth/realms/learninghub}
+          jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://keycloak:8080/auth/realms/learninghub/protocol/openid-connect/certs}
 
 server:
   port: ${SERVER_PORT:8101}
@@ -20,9 +29,18 @@ eureka:
   client:
     service-url:
       defaultZone: ${EUREKA_URL:http://discovery-service:8761/eureka}
-    enabled: ${EUREKA_ENABLED:false}
+    enabled: ${EUREKA_ENABLED:true}
   instance:
     prefer-ip-address: true
+
+# Keycloak Admin API credentials, used by registration and the password reminder.
+# The user-service client's service account holds manage-users and view-users.
+lms:
+  keycloak:
+    internal-url: ${KEYCLOAK_INTERNAL_URL:http://keycloak:8080/auth}
+    realm: ${KEYCLOAK_REALM:learninghub}
+    client-id: ${KEYCLOAK_CLIENT_ID:user-service}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET:user-service-secret}
 
 management:
   endpoints:
